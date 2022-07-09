@@ -37,18 +37,20 @@ def notifty_all(sender_info, receiver_list):
         content+=f
         content+='\n'
     
-    
-    message =  MIMEText(content,'plain','utf-8')
-    message['Subject']='NAS Movie Update'
-    message['From'] = sender_info[0]
-    message['To'] = receiver_list[0]
-
     email_sender=smtplib.SMTP()
     email_sender.connect(ustc_mstp_server)
     email_sender.login(sender_info[0], sender_info[1])
-    email_sender.sendmail(
-        sender_info[0],receiver_list, str(message)
-    )
+
+    for receiver in receiver_list:
+        message =  MIMEText(content,'plain','utf-8')
+        message['Subject']='NAS Movie Update'
+        message['From'] = sender_info[0]
+        message['To'] = receiver
+
+        email_sender.sendmail(
+            sender_info[0],receiver, str(message)
+        )
+        
     email_sender.quit()
 
 def monitor_notify(directory, sender_info, receiver_list):

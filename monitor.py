@@ -17,6 +17,8 @@ args = parser.parse_args()
 is_modified=False
 modified_files=[]
 
+USTC_MSTP_SERVER="mail.ustc.edu.cn"
+
 class FileChangeHandler(FileSystemEventHandler):
     def on_moved(self, event):
         pass
@@ -30,15 +32,14 @@ class FileChangeHandler(FileSystemEventHandler):
     def on_deleted(self, event):
         pass
 
-def notifty_all(sender_info, receiver_list):
-    ustc_mstp_server="mail.ustc.edu.cn"
+def notifty_all(sender_info, receiver_list, mstp_server=USTC_MSTP_SERVER):
     content='This is an email sent from NAS to notify {} movie(s) have been added: \n'.format(len(modified_files))
     for f in modified_files:
         content+=f
         content+='\n'
     
     email_sender=smtplib.SMTP()
-    email_sender.connect(ustc_mstp_server)
+    email_sender.connect(mstp_server)
     email_sender.login(sender_info[0], sender_info[1])
 
     for receiver in receiver_list:

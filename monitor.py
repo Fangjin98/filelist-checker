@@ -1,13 +1,19 @@
 import argparse
+from calendar import FRIDAY
 import email
 from glob import glob
 import time
 import smtplib
 import json
-
+from datetime import datetime
 from email.mime.text import MIMEText
+from unicodedata import name
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+
+USTC_MSTP_SERVER="mail.ustc.edu.cn"
+ONE_DAY_SEC = 60*60*24
+FRIDAY = 4
 
 parser = argparse.ArgumentParser(description='Directory monitor')
 parser.add_argument('--dir', type=str, default='.')
@@ -15,9 +21,15 @@ parser.add_argument('--config', type=str, default='./config.json')
 args = parser.parse_args()
 
 is_modified=False
-modified_files=[]
+modified_records=[]
 
-USTC_MSTP_SERVER="mail.ustc.edu.cn"
+class Record:
+    def __init__(self,name : str,creation_date : datetime) -> None:
+        self.name=name
+        self.creation_date=creation_date
+
+    def __str__(self) -> str:
+        return 'Name: {} \t Creation date: {}'.format(self.name, self.creation_date)
 
 class FileChangeHandler(FileSystemEventHandler):
     def on_moved(self, event):
@@ -25,17 +37,19 @@ class FileChangeHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         global is_modified
-        print("add {}".format(event.src_path))
-        modified_files.append(event.src_path)
+        print("The file has been added to {}".format(event.src_path))
+        file_name=str.split(event.src_path, '/')[-1]
+        creation_date=datetime.now().date()
+        modified_records.append(Record(file_name, creation_date))
         is_modified=True
 
     def on_deleted(self, event):
         pass
 
 def notifty_all(sender_info, receiver_list, mstp_server=USTC_MSTP_SERVER):
-    content='This is an email sent from NAS to notify {} movie(s) have been added: \n'.format(len(modified_files))
-    for f in modified_files:
-        content+=f
+    content='This is an email sent from NAS to notify {} movie(s) have been added during this week: \n'.format(len(modified_records))
+    for f in modified_records:
+        content+=str(f)
         content+='\n'
     
     email_sender=smtplib.SMTP()
@@ -44,7 +58,7 @@ def notifty_all(sender_info, receiver_list, mstp_server=USTC_MSTP_SERVER):
 
     for receiver in receiver_list:
         message =  MIMEText(content,'plain','utf-8')
-        message['Subject']='NAS Movie Update'
+        message['Subject']='Weekly NAS Movie Update'
         message['From'] = sender_info[0]
         message['To'] = receiver
 
@@ -63,12 +77,15 @@ def monitor_notify(directory, sender_info, receiver_list):
 
     try:
         global is_modified
+        
         while True:
-            time.sleep(1)
-            if is_modified:
+            time.sleep(ONE_DAY_SEC)
+            week_day = datetime.today.weekday()
+            if (week_day == FRIDAY) and is_modified:
                 notifty_all(sender_info, receiver_list)
-                modified_files.clear()
+                modified_records.clear()
                 is_modified=False
+    
     except KeyboardInterrupt:
         observer.stop()
     

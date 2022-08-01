@@ -18,6 +18,6 @@ Create the config.json file as follow:
 }
 ```
 
-Then execute `sudo nohup python3 monitor.py --dir /volume1/share/Movies  >log.txt 2>&1 &`.
+Run `sudo su`, then execute `nohup python3 monitor.py --dir /volume1/share/Movies  >log.txt 2>&1 &`.
 
 To stop the service, run `ps aux | grep monitor` to obtain the pid. Then, run `pkill -9 pid`.

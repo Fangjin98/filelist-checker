@@ -8,8 +8,6 @@ import json
 from datetime import datetime
 from email.mime.text import MIMEText
 from unicodedata import name
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 
 USTC_MSTP_SERVER="mail.ustc.edu.cn"
 ONE_DAY_SEC = 60*60*24

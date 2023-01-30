@@ -1,90 +1,76 @@
 import argparse
-from calendar import FRIDAY
-import email
-from glob import glob
-import time
-import smtplib
+import os
 import json
-from datetime import datetime
+import smtplib
+
 from email.mime.text import MIMEText
-from unicodedata import name
 
 USTC_MSTP_SERVER="mail.ustc.edu.cn"
-ONE_DAY_SEC = 60*60*24
-FRIDAY = 4
+PREV_FILE_LIST = "list.json"
 
-parser = argparse.ArgumentParser(description='Directory monitor')
+parser = argparse.ArgumentParser(description='File List Check')
 parser.add_argument('--dir', type=str, default='.')
 parser.add_argument('--config', type=str, default='./config.json')
 args = parser.parse_args()
 
-is_modified=False
-modified_records=[]
+def launch(directory, sender_info, receiver_list):
+    current_file_list = {'list':os.listdir(directory)}
+    print(current_file_list)
+    
+    if(os.path.exists(PREV_FILE_LIST)):
+        with open(PREV_FILE_LIST,'r+') as f:
+            prev_file_list = json.load(f)
+            result, diff_list = compare(current_file_list['list'], prev_file_list['list'])
+            print(result)
+            if result == 'add':               
+                print(diff_list)
+                notifty(sender_info,receiver_list,diff_list)
+            
+            f.seek(0)
+            f.truncate()
+            json.dump(current_file_list, f, indent=4, ensure_ascii=False)
+    else:
+        print('Init file list')
+        with open(PREV_FILE_LIST, 'a+') as f:
+            json.dump(current_file_list, f, indent=4, ensure_ascii=False)
 
-class Record:
-    def __init__(self,name : str,creation_date : datetime) -> None:
-        self.name=name
-        self.creation_date=creation_date
+        
+def compare(current_file_list, prev_file_list):
+    current_files= set(current_file_list)
+    prev_files=set(prev_file_list)
 
-    def __str__(self) -> str:
-        return 'Name: {} \t Creation date: {}'.format(self.name, str(self.creation_date))
+    if current_files == prev_files:
+        return ('equal', [])
+    elif len(current_file_list) > len(prev_file_list):
+        diff = current_files - prev_files
+        return ('add', diff)
+    else:
+        diff = prev_files - current_files
+        return ('remove', diff)
 
-class FileChangeHandler(FileSystemEventHandler):
-    def on_moved(self, event):
-        pass
-
-    def on_created(self, event):
-        global is_modified
-        print("The file has been added to {}".format(event.src_path))
-        file_name=str.split(event.src_path, '/')[-1]
-        creation_date=datetime.now().date()
-        modified_records.append(Record(file_name, creation_date))
-        is_modified=True
-
-    def on_deleted(self, event):
-        pass
-
-def notifty_all(sender_info, receiver_list, mstp_server=USTC_MSTP_SERVER):
-    content='This is an email sent from NAS to notify {} movie(s) have been added during this week: \n'.format(len(modified_records))
-    for f in modified_records:
+def notifty(sender_info, receiver_list, diff_list, mstp_server=USTC_MSTP_SERVER):
+    content='This is an email sent from NAS to notify {} movie(s) have been added during this week: \n'.format(len(diff_list))
+    for f in diff_list:
         content+=str(f)
         content+='\n'
-    content+='\n'
-    content+='To use NAS, visit https://dolomite-dancer-619.notion.site/NAS-d538f443b838426a8b465490b5dc1f43 .'
+    content += '\n'
+    content += 'To use NAS, contact fangjin98@mail.ustc.edu.cn for help.' # TODO: add Feishu
+    
+    print(content)
     
     email_sender=smtplib.SMTP()
     email_sender.connect(mstp_server)
     email_sender.login(sender_info[0], sender_info[1])
     for receiver in receiver_list:
         message =  MIMEText(content,'plain','utf-8')
-        message['Subject']='Weekly NAS Movie Update'
+        message['Subject']='Notify of Movie Updates in the NAS'
         message['From'] = sender_info[0]
         message['To'] = receiver
 
         email_sender.sendmail(
             sender_info[0],receiver, str(message)
         )
-    email_sender.quit()
-
-def monitor_notify(directory, sender_info, receiver_list):
-    event_handler=FileChangeHandler()
-    observer=Observer()
-    observer.schedule(event_handler, directory, recursive=True)
-    observer.start()
-
-    try:
-        global is_modified
-        while True:
-            time.sleep(ONE_DAY_SEC)
-            week_day = datetime.today.weekday()
-            if (week_day == FRIDAY) and is_modified:
-                notifty_all(sender_info, receiver_list)
-                modified_records.clear()
-                is_modified=False
-    except KeyboardInterrupt:
-        observer.stop()
-    
-    observer.join()
+    email_sender.quit()    
 
 if __name__ == "__main__":
     with open(args.config) as f:
@@ -92,5 +78,5 @@ if __name__ == "__main__":
         sender_info= (config['usr'], config['password'])
         receiver_list=config['receiver_list']
 
-    monitor_notify(args.dir, sender_info, receiver_list)
+    launch(args.dir, sender_info, receiver_list)
  

@@ -1,6 +1,6 @@
-# NAS Monitor
+# File List Monitor
 
-This script is used to monitor file changes in the specified directory of the NAS and will notify users at each friday.
+This script is used to check file changes in the specified directory and notify users. The file list will be saved as a json file.
 
 ## How to use
 
@@ -18,6 +18,4 @@ Create the config.json file as follow:
 }
 ```
 
-Run `sudo su`, then execute `nohup python3 monitor.py --dir /volume1/share/Movies  >log.txt 2>&1 &`.
-
-To stop the service, run `ps aux | grep monitor` to obtain the pid. Then, run `pkill -9 pid`.
+Run `python3 monitor.py --dir /volume1/share/Movies`.

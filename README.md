@@ -1,4 +1,4 @@
-# File List Monitor
+# Filelist Checker
 
 This script is used to check file changes in the specified directory and notify users. The file list will be saved as a json file.
 
